@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PySpark — Big Data Processing Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #f5f5f7;
+      --surface:     #ffffff;
+      --sidebar-bg:  #1c1c1e;
+      --sidebar-w:   272px;
+      --border:      #e0e0e5;
+      --text-1:      #1d1d1f;
+      --text-2:      #4a4a4f;
+      --text-3:      #86868b;
+      --accent:      #e25f00;
+      --accent-soft: #fdf0e6;
+      --green:       #1d9f5f;
+      --green-soft:  #e6f6ef;
+      --blue:        #0071e3;
+      --blue-soft:   #e8f1fb;
+      --purple:      #6e40c9;
+      --purple-soft: #f0ecfb;
+      --red:         #c9261f;
+      --red-soft:    #fbecea;
+      --code-bg:     #1c1c1e;
+      --radius:      12px;
+      --radius-sm:   8px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+      --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", "Menlo", monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text-1);
+      font-size: 16px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Progress Bar */
+    #progress-bar {
+      position: fixed; top: 0; left: 0;
+      height: 3px; width: 0%;
+      background: var(--accent);
+      z-index: 2000;
+      transition: width 0.1s linear;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* ══════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      overflow-y: auto;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: #3a3a3c; border-radius: 4px; }
+
+    .sidebar-logo {
+      padding: 26px 22px 18px;
+      border-bottom: 1px solid #2c2c2e;
+    }
+    .sidebar-logo h1 { font-size: 15px; font-weight: 700; color: #f5f5f7; letter-spacing: -0.01em; }
+    .sidebar-logo p  { font-size: 11.5px; color: #636366; margin-top: 3px; }
+
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #48484a;
+      padding: 18px 22px 7px;
+    }
+
+    .sidebar-nav { padding: 0 10px 24px; flex: 1; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 8px;
+      margin-bottom: 2px; cursor: pointer;
+      text-decoration: none; transition: background 0.15s;
+      position: relative;
+    }
+    .nav-item:hover:not(.locked) { background: #2c2c2e; }
+    .nav-item.active  { background: var(--accent) !important; }
+    .nav-item.locked  { opacity: 0.45; cursor: not-allowed; }
+
+    .nav-icon {
+      width: 30px; height: 30px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+      background: #2c2c2e; color: #aeaeb2;
+      font-family: var(--font-mono); letter-spacing: -0.02em;
+    }
+    .nav-item.active .nav-icon { background: rgba(255,255,255,0.18); color: #fff; }
+
+    .nav-text { flex: 1; }
+    .nav-title { display: block; font-size: 13px; font-weight: 500; color: #aeaeb2; line-height: 1.3; }
+    .nav-sub   { display: block; font-size: 11px; color: #48484a; margin-top: 1px; }
+    .nav-item.active .nav-title { color: #fff; }
+    .nav-item.active .nav-sub   { color: rgba(255,255,255,0.55); }
+
+    .badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; background: #2c2c2e;
+      color: #48484a; padding: 3px 7px; border-radius: 999px;
+      border: 1px solid #3a3a3c; flex-shrink: 0;
+    }
+
+    .sidebar-divider { height: 1px; background: #2c2c2e; margin: 6px 0; }
+
+    .sidebar-footer {
+      padding: 14px 22px; border-top: 1px solid #2c2c2e;
+      font-size: 11px; color: #48484a;
+    }
+
+    /* ══════════════════════════════════
+       MAIN
+    ══════════════════════════════════ */
+    .main-wrap {
+      margin-left: var(--sidebar-w);
+      flex: 1; display: flex; flex-direction: column; min-height: 100vh;
+    }
+
+    /* Top nav */
+    .topnav {
+      position: sticky; top: 0;
+      background: rgba(245,245,247,0.88);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--border);
+      z-index: 90; padding: 0 52px;
+    }
+    .topnav-inner {
+      height: 50px; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .breadcrumb { font-size: 13px; color: var(--text-3); display: flex; align-items: center; gap: 5px; }
+    .breadcrumb span { color: var(--text-1); font-weight: 600; }
+    .topnav-links { display: flex; gap: 22px; list-style: none; }
+    .topnav-links a { font-size: 13px; color: var(--text-3); text-decoration: none; transition: color 0.2s; }
+    .topnav-links a:hover { color: var(--accent); }
+
+    /* Hero */
+    .hero { padding: 68px 60px 52px; max-width: 840px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--accent-soft); color: var(--accent);
+      font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; padding: 5px 13px;
+      border-radius: 999px; margin-bottom: 22px;
+    }
+    .hero h1 {
+      font-size: 46px; font-weight: 700; line-height: 1.1;
+      letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero p { font-size: 17px; color: var(--text-2); max-width: 560px; line-height: 1.65; margin-bottom: 28px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 10px; }
+    .meta-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 5px 13px; border-radius: 999px;
+      font-size: 12.5px; color: var(--text-2);
+    }
+
+    /* Module overview strip */
+    .module-strip {
+      padding: 0 60px 48px;
+    }
+    .module-strip-inner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      max-width: 820px;
+    }
+    .module-strip-inner h3 {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-3); margin-bottom: 18px;
+    }
+    .topic-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px 28px;
+    }
+    .topic-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13.5px; color: var(--text-2); padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .topic-item a { color: var(--text-2); text-decoration: none; transition: color 0.2s; }
+    .topic-item a:hover { color: var(--accent); }
+    .topic-num {
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      font-family: var(--font-mono); min-width: 22px;
+    }
+
+    /* Content */
+    .content { padding: 0 60px 100px; max-width: 880px; }
+
+    /* Steps */
+    .step { margin-bottom: 72px; scroll-margin-top: 70px; }
+    .step-header { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 20px; }
+    .step-num {
+      flex-shrink: 0; width: 36px; height: 36px;
+      border-radius: 50%; background: var(--accent);
+      color: #fff; font-size: 13px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 4px; font-family: var(--font-mono);
+    }
+    .step-title h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+    .step-title .sub { font-size: 13.5px; color: var(--text-3); margin-top: 3px; display: block; }
+
+    /* Section label within a step */
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-3); margin: 28px 0 12px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+
+    /* Prose */
+    .prose p  { margin-bottom: 14px; color: var(--text-2); }
+    .prose ul { margin: 12px 0 12px 20px; color: var(--text-2); }
+    .prose li { margin-bottom: 5px; }
+    .prose strong { color: var(--text-1); font-weight: 600; }
+    p code, li code {
+      background: #f0f0f3; color: var(--purple);
+      padding: 2px 6px; border-radius: 4px; font-size: 13px;
+      font-family: var(--font-mono);
+    }
+
+    /* Code block */
+    .code-block { margin: 20px 0; border-radius: var(--radius); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.09); }
+    .code-header {
+      background: #2c2c2e; padding: 10px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dots { display: flex; gap: 6px; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+    .code-label { font-size: 12px; color: #86868b; font-family: var(--font-mono); }
+    .copy-btn {
+      background: transparent; border: 1px solid #3a3a3c;
+      color: #86868b; font-size: 11px; padding: 3px 9px;
+      border-radius: 5px; cursor: pointer; font-family: var(--font); transition: all 0.2s;
+    }
+    .copy-btn:hover  { background: #3a3a3c; color: #f5f5f7; }
+    .copy-btn.copied { border-color: #1d9f5f; color: #1d9f5f; }
+    pre {
+      background: var(--code-bg); padding: 22px;
+      overflow-x: auto; font-family: var(--font-mono);
+      font-size: 13.5px; line-height: 1.7;
+    }
+    pre code { color: #f5f5f7; }
+    .kw { color: #ff79c6; }
+    .fn { color: #8be9fd; }
+    .st { color: #f1fa8c; }
+    .cm { color: #6272a4; font-style: italic; }
+    .nm { color: #bd93f9; }
+    .cl { color: #50fa7b; }
+    .op { color: #ff79c6; }
+
+    /* Callout */
+    .callout {
+      display: flex; gap: 12px; padding: 15px 18px;
+      border-radius: var(--radius-sm); margin: 16px 0;
+      font-size: 14px; line-height: 1.6;
+    }
+    .callout-icon { flex-shrink: 0; font-weight: 700; font-size: 14px; margin-top: 1px; }
+    .callout-body { color: var(--text-2); }
+    .callout-body strong {
+      display: block; margin-bottom: 3px;
+      font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .c-info   { background: var(--blue-soft);   border-left: 3px solid var(--blue);   }
+    .c-tip    { background: var(--green-soft);  border-left: 3px solid var(--green);  }
+    .c-warn   { background: var(--red-soft);    border-left: 3px solid var(--red);    }
+    .c-purple { background: var(--purple-soft); border-left: 3px solid var(--purple); }
+    .c-orange { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+    .c-info   .callout-body strong { color: var(--blue);   }
+    .c-tip    .callout-body strong { color: var(--green);  }
+    .c-warn   .callout-body strong { color: var(--red);    }
+    .c-purple .callout-body strong { color: var(--purple); }
+    .c-orange .callout-body strong { color: var(--accent); }
+
+    /* Table */
+    .tbl { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+    .tbl th {
+      text-align: left; padding: 9px 13px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3);
+    }
+    .tbl td { padding: 10px 13px; border: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+    .tbl tr:hover td { background: #f5f5f7; }
+    .tbl code { background: #f0f0f3; padding: 2px 6px; border-radius: 4px; font-size: 12.5px; color: var(--purple); font-family: var(--font-mono); }
+
+    /* Arch diagram */
+    .arch-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px 32px; margin: 20px 0;
+      font-family: var(--font-mono); font-size: 13.5px; color: var(--text-2);
+      line-height: 2.1;
+    }
+    .arch-box .arch-title { font-family: var(--font); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); margin-bottom: 16px; }
+    .arch-box .hl { color: var(--accent); font-weight: 700; }
+    .arch-box .dim { color: var(--text-3); }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 56px 0; }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 30px 60px;
+      font-size: 13px; color: var(--text-3);
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main-wrap { margin-left: 0; }
+      .hero, .module-strip, .content, footer { padding-left: 22px; padding-right: 22px; }
+      .hero h1 { font-size: 32px; }
+      .topic-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<!-- ════════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>Jarvis Dev Hub</h1>
+    <p>Data Engineering Portal</p>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <div class="sidebar-section-label">Active Course</div>
+
+    <a href="#" class="nav-item active">
+      <div class="nav-icon">spk</div>
+      <div class="nav-text">
+        <span class="nav-title">PySpark &amp; Apache Spark</span>
+        <span class="nav-sub">Module 7 &middot; In Progress</span>
+      </div>
+    </a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">All Topics</div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">py</div>
+      <div class="nav-text">
+        <span class="nav-title">Python Fundamentals</span>
+        <span class="nav-sub">Module 1</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">sql</div>
+      <div class="nav-text">
+        <span class="nav-title">SQL &amp; Databases</span>
+        <span class="nav-sub">Module 2</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">pd</div>
+      <div class="nav-text">
+        <span class="nav-title">NumPy &amp; Pandas</span>
+        <span class="nav-sub">Module 3</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">lnx</div>
+      <div class="nav-text">
+        <span class="nav-title">Linux &amp; Shell Scripting</span>
+        <span class="nav-sub">Module 4</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">etl</div>
+      <div class="nav-text">
+        <span class="nav-title">Data Eng. Fundamentals</span>
+        <span class="nav-sub">Module 5 &middot; ETL Pipelines</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">dw</div>
+      <div class="nav-text">
+        <span class="nav-title">Data Warehousing</span>
+        <span class="nav-sub">Module 6 &middot; Star Schema</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">af</div>
+      <div class="nav-text">
+        <span class="nav-title">Apache Airflow</span>
+        <span class="nav-sub">Module 8 &middot; Orchestration</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">aws</div>
+      <div class="nav-text">
+        <span class="nav-title">AWS for Data Eng.</span>
+        <span class="nav-sub">Module 9 &middot; S3, Glue, Redshift</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">api</div>
+      <div class="nav-text">
+        <span class="nav-title">Data Formats &amp; APIs</span>
+        <span class="nav-sub">Module 10 &middot; REST, Parquet</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">kfk</div>
+      <div class="nav-text">
+        <span class="nav-title">Apache Kafka</span>
+        <span class="nav-sub">Module 11 &middot; Streaming</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">dbt</div>
+      <div class="nav-text">
+        <span class="nav-title">dbt Transformations</span>
+        <span class="nav-sub">Module 12</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">dk</div>
+      <div class="nav-text">
+        <span class="nav-title">Docker &amp; CI/CD</span>
+        <span class="nav-sub">Module 13 &middot; Git, Testing</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">ops</div>
+      <div class="nav-text">
+        <span class="nav-title">Pipeline Reliability</span>
+        <span class="nav-sub">Module 14 &middot; Optimization</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">cap</div>
+      <div class="nav-text">
+        <span class="nav-title">Capstone Project</span>
+        <span class="nav-sub">Module 15 &middot; End-to-End</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">tts</div>
+      <div class="nav-text">
+        <span class="nav-title">pyttsx3 &mdash; Text to Speech</span>
+        <span class="nav-sub">Python Extras</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+    <div class="nav-item locked">
+      <div class="nav-icon">gq</div>
+      <div class="nav-text">
+        <span class="nav-title">Groq LLM &amp; MCP Tools</span>
+        <span class="nav-sub">Python Extras</span>
+      </div>
+      <span class="badge">Soon</span>
+    </div>
+
+  </nav>
+
+  <div class="sidebar-footer">Data Engineering Syllabus &middot; v1.0</div>
+</aside>
+
+<!-- ════════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════════ -->
+<div class="main-wrap">
+
+  <nav class="topnav">
+    <div class="topnav-inner">
+      <div class="breadcrumb">Data Engineering &rsaquo; Module 7 &rsaquo; <span>PySpark</span></div>
+      <ul class="topnav-links">
+        <li><a href="#s1">Architecture</a></li>
+        <li><a href="#s2">SparkSession</a></li>
+        <li><a href="#s3">DataFrames</a></li>
+        <li><a href="#s4">Transforms</a></li>
+        <li><a href="#s5">SQL</a></li>
+        <li><a href="#s6">Performance</a></li>
+        <li><a href="#s7">File Formats</a></li>
+        <li><a href="#s8">Project</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">Module 7 &middot; Big Data Processing</div>
+    <h1>Process data at<br><em>any scale</em> with PySpark.</h1>
+    <p>
+      Learn <strong>Apache Spark</strong> and <strong>PySpark</strong> from the ground up &mdash;
+      distributed computing, DataFrames, transformations, Spark SQL, and performance
+      optimization for real-world data engineering pipelines.
+    </p>
+    <div class="hero-meta">
+      <div class="meta-pill">8 Lessons</div>
+      <div class="meta-pill">~45 min read</div>
+      <div class="meta-pill">Python 3.8+</div>
+      <div class="meta-pill">PySpark 3.x</div>
+      <div class="meta-pill">Industry Standard</div>
+    </div>
+  </section>
+
+  <!-- Module overview -->
+  <div class="module-strip">
+    <div class="module-strip-inner">
+      <h3>Topics Covered in This Module</h3>
+      <div class="topic-grid">
+        <div class="topic-item"><span class="topic-num">01</span><a href="#s1">Big Data &amp; Distributed Computing</a></div>
+        <div class="topic-item"><span class="topic-num">02</span><a href="#s1">Spark Architecture</a></div>
+        <div class="topic-item"><span class="topic-num">03</span><a href="#s2">SparkSession Setup</a></div>
+        <div class="topic-item"><span class="topic-num">04</span><a href="#s3">DataFrames &amp; Actions</a></div>
+        <div class="topic-item"><span class="topic-num">05</span><a href="#s4">Transformations &amp; Aggregations</a></div>
+        <div class="topic-item"><span class="topic-num">06</span><a href="#s4">Joins &amp; Window Functions</a></div>
+        <div class="topic-item"><span class="topic-num">07</span><a href="#s5">Spark SQL</a></div>
+        <div class="topic-item"><span class="topic-num">08</span><a href="#s6">Lazy Evaluation &amp; Partitions</a></div>
+        <div class="topic-item"><span class="topic-num">09</span><a href="#s6">Caching &amp; Performance</a></div>
+        <div class="topic-item"><span class="topic-num">10</span><a href="#s6">Query Execution Plans</a></div>
+        <div class="topic-item"><span class="topic-num">11</span><a href="#s7">CSV, JSON &amp; Parquet Files</a></div>
+        <div class="topic-item"><span class="topic-num">12</span><a href="#s8">Mini Project</a></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────── CONTENT ── -->
+  <main class="content">
+
+    <!-- ── Step 1 ── -->
+    <article class="step" id="s1">
+      <div class="step-header">
+        <div class="step-num">01</div>
+        <div class="step-title">
+          <h2>Big Data &amp; Spark Architecture</h2>
+          <span class="sub">Why distributed computing? How Spark is built internally.</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p><strong>Big Data</strong> refers to datasets too large or fast-moving to be processed on a single machine. Apache Spark solves this by splitting work across a cluster of machines.</p>
+
+        <div class="section-label">Why not Pandas for big data?</div>
+
+        <table class="tbl">
+          <thead><tr><th>Pandas</th><th>PySpark</th></tr></thead>
+          <tbody>
+            <tr><td>Single machine (RAM-bound)</td><td>Distributed across many nodes</td></tr>
+            <tr><td>Processes MBs to low GBs</td><td>Processes GBs to PBs</td></tr>
+            <tr><td>Eager evaluation</td><td>Lazy evaluation (optimized)</td></tr>
+            <tr><td>No fault tolerance</td><td>Automatic failure recovery</td></tr>
+          </tbody>
+        </table>
+
+        <div class="section-label">Spark Architecture</div>
+      </div>
+
+      <div class="arch-box">
+        <div class="arch-title">Spark Cluster Layout</div>
+        <span class="hl">Driver Program</span>  (your PySpark script)<br>
+        <span class="dim">    |</span><br>
+        <span class="dim">    |--- SparkContext / SparkSession</span><br>
+        <span class="dim">    |</span><br>
+        <span class="hl">Cluster Manager</span>  (YARN / Kubernetes / Standalone)<br>
+        <span class="dim">    |</span><br>
+        <span class="dim">    |--- Worker Node 1 ---&gt; Executor ---&gt; Tasks</span><br>
+        <span class="dim">    |--- Worker Node 2 ---&gt; Executor ---&gt; Tasks</span><br>
+        <span class="dim">    |--- Worker Node N ---&gt; Executor ---&gt; Tasks</span>
+      </div>
+
+      <div class="prose">
+        <ul>
+          <li><strong>Driver</strong> &mdash; your script; orchestrates the job, creates the execution plan</li>
+          <li><strong>Executor</strong> &mdash; JVM processes on worker nodes that run Tasks</li>
+          <li><strong>Task</strong> &mdash; the smallest unit of work, processes one data partition</li>
+          <li><strong>Partition</strong> &mdash; a chunk of your data (default ~128 MB each)</li>
+        </ul>
+      </div>
+
+      <div class="callout c-info">
+        <div class="callout-icon">i</div>
+        <div class="callout-body">
+          <strong>Local mode</strong>
+          On your laptop, PySpark runs in "local mode" &mdash; simulating multiple cores without a real cluster. Perfect for development and learning.
+        </div>
+      </div>
+    </article>
+
+    <hr class="divider" />
+
+    <!-- ── Step 2 ── -->
+    <article class="step" id="s2">
+      <div class="step-header">
+        <div class="step-num">02</div>
+        <div class="step-title">
+          <h2>Installation &amp; SparkSession</h2>
+          <span class="sub">Set up PySpark locally and create your first SparkSession</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p><code>SparkSession</code> is the single entry point to all Spark functionality. You create one at the start of every PySpark program.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">Terminal</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>pip install pyspark</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">spark_session.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> pyspark.sql <span class="kw">import</span> <span class="cl">SparkSession</span>
+
+<span class="cm"># Create (or get existing) SparkSession</span>
+spark = <span class="cl">SparkSession</span>.<span class="fn">builder</span> \
+    .<span class="fn">appName</span>(<span class="st">"MyFirstSparkApp"</span>) \
+    .<span class="fn">master</span>(<span class="st">"local[*]"</span>) \        <span class="cm"># use all CPU cores locally</span>
+    .<span class="fn">config</span>(<span class="st">"spark.sql.shuffle.partitions"</span>, <span class="st">"4"</span>) \
+    .<span class="fn">getOrCreate</span>()
+
+<span class="fn">print</span>(spark.version)          <span class="cm"># e.g. 3.5.0</span>
+
+<span class="cm"># Always stop the session when done</span>
+spark.<span class="fn">stop</span>()</code></pre>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Builder Option</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>.appName("name")</code></td><td>Label shown in the Spark UI</td></tr>
+          <tr><td><code>.master("local[*]")</code></td><td>Run locally using all cores; use <code>local[4]</code> for 4 cores</td></tr>
+          <tr><td><code>.config(k, v)</code></td><td>Set any Spark configuration property</td></tr>
+          <tr><td><code>.getOrCreate()</code></td><td>Return existing session if one is already running</td></tr>
+        </tbody>
+      </table>
+    </article>
+
+    <hr class="divider" />
+
+    <!-- ── Step 3 ── -->
+    <article class="step" id="s3">
+      <div class="step-header">
+        <div class="step-num">03</div>
+        <div class="step-title">
+          <h2>Spark DataFrames</h2>
+          <span class="sub">Reading data, inspecting schemas, and basic actions</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>A <strong>Spark DataFrame</strong> is a distributed collection of rows with named, typed columns &mdash; similar to a Pandas DataFrame but partitioned across the cluster.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">dataframes.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> pyspark.sql <span class="kw">import</span> <span class="cl">SparkSession</span>
+
+spark = <span class="cl">SparkSession</span>.<span class="fn">builder</span>.<span class="fn">appName</span>(<span class="st">"DataFrames"</span>).<span class="fn">master</span>(<span class="st">"local[*]"</span>).<span class="fn">getOrCreate</span>()
+
+<span class="cm"># ── Create a DataFrame from a Python list ──────────────</span>
+data = [
+    (<span class="st">"Alice"</span>, <span class="st">"Sales"</span>,   <span class="nm">55000</span>),
+    (<span class="st">"Bob"</span>,   <span class="st">"Eng"</span>,     <span class="nm">90000</span>),
+    (<span class="st">"Carol"</span>, <span class="st">"Sales"</span>,   <span class="nm">62000</span>),
+    (<span class="st">"Dave"</span>,  <span class="st">"Eng"</span>,     <span class="nm">85000</span>),
+    (<span class="st">"Eve"</span>,   <span class="st">"HR"</span>,      <span class="nm">48000</span>),
+]
+columns = [<span class="st">"name"</span>, <span class="st">"dept"</span>, <span class="st">"salary"</span>]
+
+df = spark.<span class="fn">createDataFrame</span>(data, columns)
+
+<span class="cm"># ── Inspect the DataFrame ──────────────────────────────</span>
+df.<span class="fn">printSchema</span>()       <span class="cm"># column names + types</span>
+df.<span class="fn">show</span>()              <span class="cm"># print first 20 rows</span>
+df.<span class="fn">show</span>(<span class="nm">3</span>)             <span class="cm"># print first 3 rows</span>
+<span class="fn">print</span>(df.<span class="fn">count</span>())      <span class="cm"># total row count (action)</span>
+<span class="fn">print</span>(df.columns)      <span class="cm"># ['name', 'dept', 'salary']</span>
+df.<span class="fn">describe</span>().<span class="fn">show</span>()   <span class="cm"># summary statistics</span>
+
+<span class="cm"># ── Read a CSV file ────────────────────────────────────</span>
+df_csv = spark.<span class="fn">read</span> \
+    .<span class="fn">option</span>(<span class="st">"header"</span>, <span class="st">"true"</span>) \
+    .<span class="fn">option</span>(<span class="st">"inferSchema"</span>, <span class="st">"true"</span>) \
+    .<span class="fn">csv</span>(<span class="st">"sales_data.csv"</span>)
+
+spark.<span class="fn">stop</span>()</code></pre>
+      </div>
+
+      <div class="callout c-orange">
+        <div class="callout-icon">!</div>
+        <div class="callout-body">
+          <strong>Transformations vs Actions</strong>
+          Methods like <code>filter()</code>, <code>select()</code>, <code>groupBy()</code> are <strong>transformations</strong> &mdash; they are lazy and build a plan.
+          Methods like <code>show()</code>, <code>count()</code>, <code>collect()</code> are <strong>actions</strong> &mdash; they trigger actual computation.
+        </div>
+      </div>
+    </article>
+
+    <hr class="divider" />
+
+    <!-- ── Step 4 ── -->
+    <article class="step" id="s4">
+      <div class="step-header">
+        <div class="step-num">04</div>
+        <div class="step-title">
+          <h2>Transformations, Aggregations &amp; Joins</h2>
+          <span class="sub">Filter, select, group, aggregate, and join DataFrames</span>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">transformations.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> pyspark.sql <span class="kw">import</span> <span class="cl">SparkSession</span>
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> functions <span class="kw">as</span> F
+
+spark = <span class="cl">SparkSession</span>.<span class="fn">builder</span>.<span class="fn">appName</span>(<span class="st">"Transforms"</span>).<span class="fn">master</span>(<span class="st">"local[*]"</span>).<span class="fn">getOrCreate</span>()
+
+data = [(<span class="st">"Alice"</span>,<span class="st">"Sales"</span>,<span class="nm">55000</span>),(<span class="st">"Bob"</span>,<span class="st">"Eng"</span>,<span class="nm">90000</span>),
+        (<span class="st">"Carol"</span>,<span class="st">"Sales"</span>,<span class="nm">62000</span>),(<span class="st">"Dave"</span>,<span class="st">"Eng"</span>,<span class="nm">85000</span>),(<span class="st">"Eve"</span>,<span class="st">"HR"</span>,<span class="nm">48000</span>)]
+df = spark.<span class="fn">createDataFrame</span>(data, [<span class="st">"name"</span>,<span class="st">"dept"</span>,<span class="st">"salary"</span>])
+
+<span class="cm"># ── Select columns ─────────────────────────────────────</span>
+df.<span class="fn">select</span>(<span class="st">"name"</span>, <span class="st">"salary"</span>).<span class="fn">show</span>()
+
+<span class="cm"># ── Filter rows ────────────────────────────────────────</span>
+df.<span class="fn">filter</span>(F.<span class="fn">col</span>(<span class="st">"salary"</span>) > <span class="nm">60000</span>).<span class="fn">show</span>()
+df.<span class="fn">filter</span>((F.<span class="fn">col</span>(<span class="st">"dept"</span>) == <span class="st">"Sales"</span>) &amp; (F.<span class="fn">col</span>(<span class="st">"salary"</span>) > <span class="nm">55000</span>)).<span class="fn">show</span>()
+
+<span class="cm"># ── Add a new column ───────────────────────────────────</span>
+df = df.<span class="fn">withColumn</span>(<span class="st">"salary_usd"</span>, F.<span class="fn">col</span>(<span class="st">"salary"</span>) * <span class="nm">1.2</span>)
+df = df.<span class="fn">withColumn</span>(<span class="st">"level"</span>, F.<span class="fn">when</span>(F.<span class="fn">col</span>(<span class="st">"salary"</span>) >= <span class="nm">80000</span>, <span class="st">"Senior"</span>).<span class="fn">otherwise</span>(<span class="st">"Junior"</span>))
+
+<span class="cm"># ── Sort ───────────────────────────────────────────────</span>
+df.<span class="fn">orderBy</span>(F.<span class="fn">col</span>(<span class="st">"salary"</span>).<span class="fn">desc</span>()).<span class="fn">show</span>()
+
+<span class="cm"># ── Group By + Aggregation ─────────────────────────────</span>
+df.<span class="fn">groupBy</span>(<span class="st">"dept"</span>).<span class="fn">agg</span>(
+    F.<span class="fn">count</span>(<span class="st">"name"</span>).<span class="fn">alias</span>(<span class="st">"headcount"</span>),
+    F.<span class="fn">avg</span>(<span class="st">"salary"</span>).<span class="fn">alias</span>(<span class="st">"avg_salary"</span>),
+    F.<span class="fn">max</span>(<span class="st">"salary"</span>).<span class="fn">alias</span>(<span class="st">"max_salary"</span>)
+).<span class="fn">show</span>()
+
+<span class="cm"># ── Join two DataFrames ────────────────────────────────</span>
+dept_data = [(<span class="st">"Sales"</span>, <span class="st">"New York"</span>), (<span class="st">"Eng"</span>, <span class="st">"San Francisco"</span>), (<span class="st">"HR"</span>, <span class="st">"Chicago"</span>)]
+dept_df = spark.<span class="fn">createDataFrame</span>(dept_data, [<span class="st">"dept"</span>, <span class="st">"city"</span>])
+
+joined = df.<span class="fn">join</span>(dept_df, on=<span class="st">"dept"</span>, how=<span class="st">"inner"</span>)
+joined.<span class="fn">show</span>()
+
+spark.<span class="fn">stop</span>()</code></pre>
+      </div>
+
+      <div class="prose">
+        <div class="section-label">Window Functions</div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">window_functions.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> pyspark.sql <span class="kw">import</span> functions <span class="kw">as</span> F
+<span class="kw">from</span> pyspark.sql.window <span class="kw">import</span> <span class="cl">Window</span>
+
+<span class="cm"># Rank employees within each department by salary</span>
+window_spec = <span class="cl">Window</span>.<span class="fn">partitionBy</span>(<span class="st">"dept"</span>).<span class="fn">orderBy</span>(F.<span class="fn">col</span>(<span class="st">"salary"</span>).<span class="fn">desc</span>())
+
+df = df.<span class="fn">withColumn</span>(<span class="st">"rank"</span>,         F.<span class="fn">rank</span>().<span class="fn">over</span>(window_spec)) \
+       .<span class="fn">withColumn</span>(<span class="st">"dept_avg_sal"</span>, F.<span class="fn">avg</span>(<span class="st">"salary"</span>).<span class="fn">over</span>(<span class="cl">Window</span>.<span class="fn">partitionBy</span>(<span class="st">"dept"</span>)))
+
+df.<span class="fn">show</span>()</code></pre>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Join Type</th><th>Keeps rows from...</th></tr></thead>
+        <tbody>
+          <tr><td><code>inner</code></td><td>Both DataFrames where key matches</td></tr>
+          <tr><td><code>left</code></td><td>All rows from left; NULLs for non-matching right</td></tr>
+          <tr><td><code>right</code></td><td>All rows from right; NULLs for non-matching left</td></tr>
+          <tr><td><code>outer</code></td><td>All rows from both; NULLs where no match</td></tr>
+        </tbody>
+      </table>
+    </article>
+
+    <hr class="divider" />
+
+    <!-- ── Step 5 ── -->
+    <article class="step" id="s5">
+      <div class="step-header">
+        <div class="step-num">05</div>
+        <div class="step-title">
+          <h2>Spark SQL</h2>
+          <span class="sub">Query DataFrames using standard SQL syntax</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>Register any DataFrame as a temporary view, then query it with plain SQL. Both the DataFrame API and Spark SQL produce identical execution plans under the hood.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">spark_sql.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> pyspark.sql <span class="kw">import</span> <span class="cl">SparkSession</span>
+
+spark = <span class="cl">SparkSession</span>.<span class="fn">builder</span>.<span class="fn">appName</span>(<span class="st">"SparkSQL"</span>).<span class="fn">master</span>(<span class="st">"local[*]"</span>).<span class="fn">getOrCreate</span>()
+
+data = [(<span class="st">"Alice"</span>,<span class="st">"Sales"</span>,<span class="nm">55000</span>),(<span class="st">"Bob"</span>,<span class="st">"Eng"</span>,<span class="nm">90000</span>),
+        (<span class="st">"Carol"</span>,<span class="st">"Sales"</span>,<span class="nm">62000</span>),(<span class="st">"Dave"</span>,<span class="st">"Eng"</span>,<span class="nm">85000</span>)]
+df = spark.<span class="fn">createDataFrame</span>(data, [<span class="st">"name"</span>,<span class="st">"dept"</span>,<span class="st">"salary"</span>])
+
+<span class="cm"># Register as a SQL view</span>
+df.<span class="fn">createOrReplaceTempView</span>(<span class="st">"employees"</span>)
+
+<span class="cm"># Run SQL queries</span>
+result = spark.<span class="fn">sql</span>(<span class="st">"""
+    SELECT dept,
+           COUNT(*)       AS headcount,
+           AVG(salary)    AS avg_salary,
+           MAX(salary)    AS top_salary
+    FROM   employees
+    GROUP  BY dept
+    ORDER  BY avg_salary DESC
+"""</span>)
+
+result.<span class="fn">show</span>()
+
+<span class="cm"># Filtering with SQL</span>
+spark.<span class="fn">sql</span>(<span class="st">"SELECT name, salary FROM employees WHERE salary > 80000"</span>).<span class="fn">show</span>()
+
+<span class="cm"># Result is a regular DataFrame — chain more transformations</span>
+result.<span class="fn">filter</span>(result.avg_salary > <span class="nm">60000</span>).<span class="fn">show</span>()
+
+spark.<span class="fn">stop</span>()</code></pre>
+      </div>
+
+      <div class="callout c-tip">
+        <div class="callout-icon">+</div>
+        <div class="callout-body">
+          <strong>Tip</strong>
+          Use <code>createOrReplaceTempView</code> for session-scoped views. Use <code>createGlobalTempView</code> + prefix <code>global_temp.</code> to share a view across sessions.
+        </div>
+      </div>
+    </article>
+
+    <hr class="divider" />
+
+    <!-- ── Step 6 ── -->
+    <article class="step" id="s6">
+      <div class="step-header">
+        <div class="step-num">06</div>
+        <div class="step-title">
+          <h2>Lazy Evaluation, Partitions &amp; Performance</h2>
+          <span class="sub">Understand how Spark actually runs your code and how to optimize it</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <div class="section-label">Lazy Evaluation</div>
+        <p>Spark does <strong>not</strong> execute transformations immediately. It builds a <em>logical plan</em> (a DAG of operations) and only runs it when an action is triggered. This allows Spark to optimize the entire pipeline before executing.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">performance.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> pyspark.sql <span class="kw">import</span> <span class="cl">SparkSession</span>
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> functions <span class="kw">as</span> F
+
+spark = <span class="cl">SparkSession</span>.<span class="fn">builder</span>.<span class="fn">appName</span>(<span class="st">"Perf"</span>).<span class="fn">master</span>(<span class="st">"local[*]"</span>).<span class="fn">getOrCreate</span>()
+
+df = spark.<span class="fn">read</span>.<span class="fn">csv</span>(<span class="st">"large_sales.csv"</span>, header=<span class="kw">True</span>, inferSchema=<span class="kw">True</span>)
+
+<span class="cm"># ── Explain the execution plan ─────────────────────────</span>
+df.<span class="fn">filter</span>(F.<span class="fn">col</span>(<span class="st">"amount"</span>) > <span class="nm">1000</span>).<span class="fn">explain</span>()          <span class="cm"># physical plan</span>
+df.<span class="fn">filter</span>(F.<span class="fn">col</span>(<span class="st">"amount"</span>) > <span class="nm">1000</span>).<span class="fn">explain</span>(<span class="kw">True</span>)    <span class="cm"># full plan</span>
+
+<span class="cm"># ── Check partition count ──────────────────────────────</span>
+<span class="fn">print</span>(<span class="st">f"Partitions: {df.<span class="fn">rdd</span>.<span class="fn">getNumPartitions</span>()}"</span>)
+
+<span class="cm"># ── Repartition (increases parallelism) ───────────────</span>
+df_repartitioned = df.<span class="fn">repartition</span>(<span class="nm">8</span>)
+
+<span class="cm"># ── Coalesce (reduce partitions without full shuffle) ─</span>
+df_coalesced = df.<span class="fn">coalesce</span>(<span class="nm">2</span>)
+
+<span class="cm"># ── Cache a DataFrame reused multiple times ───────────</span>
+df.<span class="fn">cache</span>()       <span class="cm"># keeps in memory after first action</span>
+df.<span class="fn">count</span>()       <span class="cm"># triggers caching</span>
+df.<span class="fn">show</span>(<span class="nm">5</span>)       <span class="cm"># served from cache — fast!</span>
+df.<span class="fn">unpersist</span>()   <span class="cm"># release memory when done</span>
+
+spark.<span class="fn">stop</span>()</code></pre>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Concept</th><th>What it means</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Narrow transformation</strong></td><td>Each input partition produces exactly one output partition (e.g. <code>filter</code>, <code>select</code>)</td><td>No data movement needed &mdash; fast</td></tr>
+          <tr><td><strong>Wide transformation</strong></td><td>Data must be shuffled across partitions (e.g. <code>groupBy</code>, <code>join</code>)</td><td>Expensive &mdash; minimize shuffles</td></tr>
+          <tr><td><code>cache()</code></td><td>Store DataFrame in memory</td><td>When you reuse a DataFrame multiple times</td></tr>
+          <tr><td><code>repartition(n)</code></td><td>Redistribute data into n partitions (full shuffle)</td><td>Increase parallelism before heavy operations</td></tr>
+          <tr><td><code>coalesce(n)</code></td><td>Reduce partitions (no full shuffle)</td><td>Before writing output to reduce file count</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout c-warn">
+        <div class="callout-icon">!</div>
+        <div class="callout-body">
+          <strong>Avoid collect() on large data</strong>
+          <code>df.collect()</code> brings all data to the Driver. On large datasets this causes Out-of-Memory errors. Use <code>show()</code> or <code>take(n)</code> instead.
+        </div>
+      </div>
+    </article>
+
+    <hr class="divider" />
+
+    <!-- ── Step 7 ── -->
+    <article class="step" id="s7">
+      <div class="step-header">
+        <div class="step-num">07</div>
+        <div class="step-title">
+          <h2>Reading &amp; Writing File Formats</h2>
+          <span class="sub">CSV, JSON, and Parquet &mdash; the three most common data engineering formats</span>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">file_formats.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> pyspark.sql <span class="kw">import</span> <span class="cl">SparkSession</span>
+
+spark = <span class="cl">SparkSession</span>.<span class="fn">builder</span>.<span class="fn">appName</span>(<span class="st">"FileFormats"</span>).<span class="fn">master</span>(<span class="st">"local[*]"</span>).<span class="fn">getOrCreate</span>()
+
+<span class="cm"># ── CSV ────────────────────────────────────────────────</span>
+df_csv = spark.<span class="fn">read</span> \
+    .<span class="fn">option</span>(<span class="st">"header"</span>,      <span class="st">"true"</span>) \
+    .<span class="fn">option</span>(<span class="st">"inferSchema"</span>, <span class="st">"true"</span>) \
+    .<span class="fn">option</span>(<span class="st">"sep"</span>,          <span class="st">","</span>) \
+    .<span class="fn">csv</span>(<span class="st">"data/sales.csv"</span>)
+
+df_csv.<span class="fn">write</span>.<span class="fn">mode</span>(<span class="st">"overwrite"</span>).<span class="fn">csv</span>(<span class="st">"output/sales_out"</span>)
+
+<span class="cm"># ── JSON ───────────────────────────────────────────────</span>
+df_json = spark.<span class="fn">read</span>.<span class="fn">json</span>(<span class="st">"data/events.json"</span>)
+df_json.<span class="fn">write</span>.<span class="fn">mode</span>(<span class="st">"overwrite"</span>).<span class="fn">json</span>(<span class="st">"output/events_out"</span>)
+
+<span class="cm"># ── Parquet (recommended for data engineering) ─────────</span>
+<span class="cm"># columnar format — much faster for analytics queries</span>
+df_csv.<span class="fn">write</span>.<span class="fn">mode</span>(<span class="st">"overwrite"</span>).<span class="fn">parquet</span>(<span class="st">"output/sales.parquet"</span>)
+
+df_parquet = spark.<span class="fn">read</span>.<span class="fn">parquet</span>(<span class="st">"output/sales.parquet"</span>)
+df_parquet.<span class="fn">show</span>(<span class="nm">5</span>)
+
+<span class="cm"># ── Write with partitioning (like folders by date) ────</span>
+df_csv.<span class="fn">write</span> \
+    .<span class="fn">mode</span>(<span class="st">"overwrite"</span>) \
+    .<span class="fn">partitionBy</span>(<span class="st">"dept"</span>) \
+    .<span class="fn">parquet</span>(<span class="st">"output/sales_partitioned"</span>)
+
+spark.<span class="fn">stop</span>()</code></pre>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Format</th><th>Best for</th><th>Compression</th><th>Schema stored</th></tr></thead>
+        <tbody>
+          <tr><td>CSV</td><td>Simple exchange, debugging</td><td>No</td><td>No</td></tr>
+          <tr><td>JSON</td><td>Nested / semi-structured data</td><td>No</td><td>No</td></tr>
+          <tr><td><strong>Parquet</strong></td><td>Analytics, data lakes, warehouses</td><td>Yes (snappy)</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout c-tip">
+        <div class="callout-icon">*</div>
+        <div class="callout-body">
+          <strong>Always prefer Parquet in production</strong>
+          Parquet is columnar &mdash; it reads only the columns your query needs, dramatically reducing I/O. It also stores schema and supports Snappy compression by default.
+        </div>
+      </div>
+    </article>
+
+    <hr class="divider" />
+
+    <!-- ── Step 8 ── -->
+    <article class="step" id="s8">
+      <div class="step-header">
+        <div class="step-num">08</div>
+        <div class="step-title">
+          <h2>Mini Project &mdash; Large-Scale Sales Data Processing</h2>
+          <span class="sub">End-to-end PySpark pipeline: ingest, clean, transform, aggregate, and export</span>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p>This project brings together every concept from this module into a single production-style pipeline.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+          <span class="code-label">sales_pipeline.py</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code><span class="st">"""
+Module 7 Mini Project: Large-Scale Sales Data Processing Pipeline
+"""</span>
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> <span class="cl">SparkSession</span>
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> functions <span class="kw">as</span> F
+<span class="kw">from</span> pyspark.sql.window <span class="kw">import</span> <span class="cl">Window</span>
+
+
+<span class="kw">def</span> <span class="fn">build_spark</span>():
+    <span class="kw">return</span> <span class="cl">SparkSession</span>.<span class="fn">builder</span> \
+        .<span class="fn">appName</span>(<span class="st">"SalesPipeline"</span>) \
+        .<span class="fn">master</span>(<span class="st">"local[*]"</span>) \
+        .<span class="fn">config</span>(<span class="st">"spark.sql.shuffle.partitions"</span>, <span class="st">"4"</span>) \
+        .<span class="fn">getOrCreate</span>()
+
+
+<span class="kw">def</span> <span class="fn">ingest</span>(spark, path: <span class="fn">str</span>):
+    <span class="st">"""Read raw CSV and enforce schema."""</span>
+    <span class="kw">return</span> spark.<span class="fn">read</span> \
+        .<span class="fn">option</span>(<span class="st">"header"</span>, <span class="st">"true"</span>) \
+        .<span class="fn">option</span>(<span class="st">"inferSchema"</span>, <span class="st">"true"</span>) \
+        .<span class="fn">csv</span>(path)
+
+
+<span class="kw">def</span> <span class="fn">clean</span>(df):
+    <span class="st">"""Remove nulls, duplicates, and invalid rows."""</span>
+    <span class="kw">return</span> df \
+        .<span class="fn">dropna</span>(subset=[<span class="st">"order_id"</span>, <span class="st">"amount"</span>]) \
+        .<span class="fn">dropDuplicates</span>([<span class="st">"order_id"</span>]) \
+        .<span class="fn">filter</span>(F.<span class="fn">col</span>(<span class="st">"amount"</span>) > <span class="nm">0</span>)
+
+
+<span class="kw">def</span> <span class="fn">transform</span>(df):
+    <span class="st">"""Add derived columns and categorize."""</span>
+    window = <span class="cl">Window</span>.<span class="fn">partitionBy</span>(<span class="st">"region"</span>).<span class="fn">orderBy</span>(F.<span class="fn">col</span>(<span class="st">"amount"</span>).<span class="fn">desc</span>())
+
+    <span class="kw">return</span> df \
+        .<span class="fn">withColumn</span>(<span class="st">"year"</span>,  F.<span class="fn">year</span>(<span class="st">"order_date"</span>)) \
+        .<span class="fn">withColumn</span>(<span class="st">"month"</span>, F.<span class="fn">month</span>(<span class="st">"order_date"</span>)) \
+        .<span class="fn">withColumn</span>(<span class="st">"tier"</span>,
+            F.<span class="fn">when</span>(F.<span class="fn">col</span>(<span class="st">"amount"</span>) >= <span class="nm">10000</span>, <span class="st">"Enterprise"</span>)
+             .<span class="fn">when</span>(F.<span class="fn">col</span>(<span class="st">"amount"</span>) >= <span class="nm">1000</span>,  <span class="st">"Mid-Market"</span>)
+             .<span class="fn">otherwise</span>(<span class="st">"SMB"</span>)) \
+        .<span class="fn">withColumn</span>(<span class="st">"rank_in_region"</span>, F.<span class="fn">rank</span>().<span class="fn">over</span>(window))
+
+
+<span class="kw">def</span> <span class="fn">aggregate</span>(df):
+    <span class="st">"""Summarize by region and tier."""</span>
+    <span class="kw">return</span> df.<span class="fn">groupBy</span>(<span class="st">"region"</span>, <span class="st">"tier"</span>).<span class="fn">agg</span>(
+        F.<span class="fn">count</span>(<span class="st">"order_id"</span>).<span class="fn">alias</span>(<span class="st">"order_count"</span>),
+        F.<span class="fn">sum</span>(<span class="st">"amount"</span>).<span class="fn">alias</span>(<span class="st">"total_revenue"</span>),
+        F.<span class="fn">avg</span>(<span class="st">"amount"</span>).<span class="fn">alias</span>(<span class="st">"avg_order_value"</span>),
+    ).<span class="fn">orderBy</span>(<span class="st">"region"</span>, F.<span class="fn">col</span>(<span class="st">"total_revenue"</span>).<span class="fn">desc</span>())
+
+
+<span class="kw">def</span> <span class="fn">export</span>(df, output_path: <span class="fn">str</span>):
+    <span class="st">"""Write result as Parquet, partitioned by region."""</span>
+    df.<span class="fn">write</span> \
+      .<span class="fn">mode</span>(<span class="st">"overwrite"</span>) \
+      .<span class="fn">partitionBy</span>(<span class="st">"region"</span>) \
+      .<span class="fn">parquet</span>(output_path)
+    <span class="fn">print</span>(<span class="st">f"Exported to {output_path}"</span>)
+
+
+<span class="cm"># ── Run the pipeline ───────────────────────────────────</span>
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    spark = <span class="fn">build_spark</span>()
+
+    raw_df      = <span class="fn">ingest</span>(spark, <span class="st">"data/sales_raw.csv"</span>)
+    clean_df    = <span class="fn">clean</span>(raw_df)
+    clean_df.<span class="fn">cache</span>()                     <span class="cm"># reused below — cache it</span>
+
+    enriched_df = <span class="fn">transform</span>(clean_df)
+    summary_df  = <span class="fn">aggregate</span>(enriched_df)
+
+    summary_df.<span class="fn">show</span>(<span class="nm">20</span>)
+    <span class="fn">export</span>(summary_df, <span class="st">"output/sales_summary"</span>)
+
+    clean_df.<span class="fn">unpersist</span>()
+    spark.<span class="fn">stop</span>()</code></pre>
+      </div>
+
+      <div class="callout c-tip">
+        <div class="callout-icon">*</div>
+        <div class="callout-body">
+          <strong>Module 7 Complete</strong>
+          You now know Spark Architecture, SparkSession, DataFrames, Transformations, Aggregations, Joins, Window Functions, Spark SQL, Lazy Evaluation, Partitions, Caching, and File Formats &mdash; a complete PySpark toolkit for production data pipelines.
+        </div>
+      </div>
+
+      <div class="callout c-info">
+        <div class="callout-icon">i</div>
+        <div class="callout-body">
+          <strong>Up Next</strong>
+          Module 8 &mdash; Apache Airflow: schedule and orchestrate your PySpark pipeline to run automatically on a daily or hourly basis.
+        </div>
+      </div>
+
+    </article>
+
+  </main>
+
+  <footer>
+    Data Engineering Syllabus &middot; Module 7: PySpark &middot; Beginner to Advanced
+  </footer>
+</div>
+
+<script>
+  const bar = document.getElementById('progress-bar');
+  window.addEventListener('scroll', () => {
+    const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+    bar.style.width = Math.min(pct, 100) + '%';
+  });
+
+  function copyCode(btn) {
+    const text = btn.closest('.code-block').querySelector('pre').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
+
