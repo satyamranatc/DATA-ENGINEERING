@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ <title>pyttsx3 — Python Text-to-Speech Guide</title>
+ <style>
+ /* Reset & Base */
+ *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+ :root {
+ --bg: #fafafa;
+ --surface: #ffffff;
+ --border: #e8e8ed;
+ --text-1: #1d1d1f;
+ --text-2: #4a4a4f;
+ --text-3: #86868b;
+ --accent: #0071e3;
+ --accent-soft: #e8f1fb;
+ --green: #1d9f5f;
+ --green-soft: #e6f6ef;
+ --purple: #6e40c9;
+ --purple-soft: #f0ecfb;
+ --orange: #c9611f;
+ --orange-soft: #fdf3eb;
+ --code-bg: #1c1c1e;
+ --code-text: #f5f5f7;
+ --radius: 12px;
+ --radius-sm: 8px;
+ --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+ --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", "Menlo", monospace;
+ }
+
+ html { scroll-behavior: smooth; }
+
+ body {
+ font-family: var(--font);
+ background: var(--bg);
+ color: var(--text-1);
+ font-size: 17px;
+ line-height: 1.75;
+ -webkit-font-smoothing: antialiased;
+ }
+
+ /* Progress Bar */
+ #progress-bar {
+ position: fixed;
+ top: 0; left: 0;
+ height: 3px;
+ width: 0%;
+ background: var(--accent);
+ z-index: 1000;
+ transition: width 0.1s linear;
+ border-radius: 0 2px 2px 0;
+ }
+
+ /* Nav */
+ nav {
+ position: sticky;
+ top: 0;
+ background: rgba(250,250,250,0.85);
+ backdrop-filter: saturate(180%) blur(20px);
+ -webkit-backdrop-filter: saturate(180%) blur(20px);
+ border-bottom: 1px solid var(--border);
+ z-index: 100;
+ padding: 0 48px;
+ }
+ .nav-inner {
+ max-width: 900px;
+ margin: 0 auto;
+ height: 56px;
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ }
+ .nav-logo {
+ font-size: 15px;
+ font-weight: 600;
+ color: var(--text-1);
+ text-decoration: none;
+ display: flex;
+ align-items: center;
+ gap: 8px;
+ }
+ .nav-logo span { color: var(--accent); }
+ .nav-links {
+ display: flex;
+ gap: 28px;
+ list-style: none;
+ }
+ .nav-links a {
+ font-size: 14px;
+ color: var(--text-2);
+ text-decoration: none;
+ transition: color 0.2s;
+ }
+ .nav-links a:hover { color: var(--accent); }
+
+ /* Hero */
+ .hero {
+ padding: 96px 48px 80px;
+ text-align: center;
+ max-width: 780px;
+ margin: 0 auto;
+ }
+ .hero-badge {
+ display: inline-flex;
+ align-items: center;
+ gap: 6px;
+ background: var(--accent-soft);
+ color: var(--accent);
+ font-size: 12px;
+ font-weight: 600;
+ letter-spacing: 0.04em;
+ text-transform: uppercase;
+ padding: 6px 14px;
+ border-radius: 999px;
+ margin-bottom: 28px;
+ }
+ .hero h1 {
+ font-size: 54px;
+ font-weight: 700;
+ line-height: 1.1;
+ letter-spacing: -0.02em;
+ color: var(--text-1);
+ margin-bottom: 20px;
+ }
+ .hero h1 em { font-style: normal; color: var(--accent); }
+ .hero p {
+ font-size: 19px;
+ color: var(--text-2);
+ max-width: 580px;
+ margin: 0 auto 40px;
+ line-height: 1.6;
+ }
+ .hero-meta {
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ gap: 24px;
+ font-size: 13px;
+ color: var(--text-3);
+ }
+ .hero-meta span { display: flex; align-items: center; gap: 6px; }
+
+ /* Table of Contents */
+ .toc-wrapper {
+ max-width: 900px;
+ margin: 0 auto 64px;
+ padding: 0 48px;
+ }
+ .toc {
+ background: var(--surface);
+ border: 1px solid var(--border);
+ border-radius: var(--radius);
+ padding: 32px 36px;
+ }
+ .toc h3 {
+ font-size: 13px;
+ font-weight: 600;
+ text-transform: uppercase;
+ letter-spacing: 0.07em;
+ color: var(--text-3);
+ margin-bottom: 20px;
+ }
+ .toc ol {
+ list-style: none;
+ counter-reset: toc;
+ display: grid;
+ grid-template-columns: 1fr 1fr;
+ gap: 10px 32px;
+ }
+ .toc li { counter-increment: toc; }
+ .toc a {
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ font-size: 15px;
+ color: var(--text-2);
+ text-decoration: none;
+ transition: color 0.2s;
+ }
+ .toc a::before {
+ content: counter(toc, decimal-leading-zero);
+ font-size: 12px;
+ font-weight: 600;
+ color: var(--accent);
+ font-variant-numeric: tabular-nums;
+ min-width: 22px;
+ }
+ .toc a:hover { color: var(--accent); }
+
+ /* Main Layout */
+ .content {
+ max-width: 900px;
+ margin: 0 auto;
+ padding: 0 48px 120px;
+ }
+
+ /* Step Cards */
+ .step {
+ margin-bottom: 72px;
+ scroll-margin-top: 80px;
+ }
+ .step-header {
+ display: flex;
+ align-items: flex-start;
+ gap: 20px;
+ margin-bottom: 24px;
+ }
+ .step-number {
+ flex-shrink: 0;
+ width: 40px;
+ height: 40px;
+ border-radius: 50%;
+ background: var(--accent);
+ color: white;
+ font-size: 15px;
+ font-weight: 700;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ margin-top: 4px;
+ }
+ .step-title-wrap h2 {
+ font-size: 28px;
+ font-weight: 700;
+ letter-spacing: -0.01em;
+ line-height: 1.2;
+ margin-bottom: 4px;
+ }
+ .step-title-wrap .step-sub {
+ font-size: 14px;
+ color: var(--text-3);
+ font-weight: 400;
+ }
+
+ /* Prose */
+ .prose p { margin-bottom: 16px; color: var(--text-2); }
+ .prose ul { margin: 16px 0 16px 20px; color: var(--text-2); }
+ .prose li { margin-bottom: 6px; }
+ .prose strong { color: var(--text-1); font-weight: 600; }
+
+ /* Code Blocks */
+ .code-block {
+ margin: 24px 0;
+ border-radius: var(--radius);
+ overflow: hidden;
+ box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+ }
+ .code-header {
+ background: #2c2c2e;
+ padding: 12px 20px;
+ display: flex;
+ align-items: center;
+ justify-content: space-between;
+ }
+ .code-header .dots { display: flex; gap: 7px; }
+ .dot {
+ width: 12px; height: 12px;
+ border-radius: 50%;
+ }
+ .dot-red { background: #ff5f57; }
+ .dot-yellow { background: #febc2e; }
+ .dot-green { background: #28c840; }
+ .code-label {
+ font-size: 12px;
+ color: #86868b;
+ font-family: var(--font-mono);
+ }
+ .copy-btn {
+ background: transparent;
+ border: 1px solid #3a3a3c;
+ color: #86868b;
+ font-size: 11px;
+ padding: 4px 10px;
+ border-radius: 5px;
+ cursor: pointer;
+ font-family: var(--font);
+ transition: all 0.2s;
+ }
+ .copy-btn:hover { background: #3a3a3c; color: #f5f5f7; }
+ .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+ pre {
+ background: var(--code-bg);
+ padding: 24px;
+ overflow-x: auto;
+ font-family: var(--font-mono);
+ font-size: 14.5px;
+ line-height: 1.7;
+ }
+ code { font-family: var(--font-mono); }
+ pre code { color: var(--code-text); }
+
+ /* Syntax colours */
+ .kw { color: #ff79c6; } /* keyword */
+ .fn { color: #8be9fd; } /* function */
+ .st { color: #f1fa8c; } /* string */
+ .cm { color: #6272a4; } /* comment */
+ .nm { color: #bd93f9; } /* number */
+ .cl { color: #50fa7b; } /* class */
+
+ /* Callout boxes */
+ .callout {
+ display: flex;
+ gap: 14px;
+ padding: 18px 20px;
+ border-radius: var(--radius-sm);
+ margin: 20px 0;
+ font-size: 15px;
+ line-height: 1.6;
+ }
+ .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+ .callout-body { color: var(--text-2); }
+ .callout-body strong { display: block; margin-bottom: 4px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+ .callout-info { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+ .callout-tip { background: var(--green-soft); border-left: 3px solid var(--green); }
+ .callout-warn { background: var(--orange-soft); border-left: 3px solid var(--orange); }
+ .callout-purple { background: var(--purple-soft); border-left: 3px solid var(--purple); }
+ .callout-info .callout-body strong { color: var(--accent); }
+ .callout-tip .callout-body strong { color: var(--green); }
+ .callout-warn .callout-body strong { color: var(--orange); }
+ .callout-purple .callout-body strong { color: var(--purple); }
+
+ /* Param Table */
+ .param-table {
+ width: 100%;
+ border-collapse: collapse;
+ margin: 20px 0;
+ font-size: 14.5px;
+ }
+ .param-table th {
+ text-align: left;
+ padding: 10px 16px;
+ background: var(--surface);
+ border: 1px solid var(--border);
+ font-size: 12px;
+ font-weight: 600;
+ text-transform: uppercase;
+ letter-spacing: 0.05em;
+ color: var(--text-3);
+ }
+ .param-table td {
+ padding: 12px 16px;
+ border: 1px solid var(--border);
+ color: var(--text-2);
+ vertical-align: top;
+ }
+ .param-table tr:hover td { background: #f5f5f7; }
+ .param-table code {
+ background: #f0f0f3;
+ padding: 2px 7px;
+ border-radius: 4px;
+ font-size: 13px;
+ color: var(--purple);
+ }
+
+ /* Divider */
+ .divider {
+ border: none;
+ border-top: 1px solid var(--border);
+ margin: 56px 0;
+ }
+
+ /* Inline code */
+ p code, li code {
+ background: #f0f0f3;
+ color: var(--purple);
+ padding: 2px 7px;
+ border-radius: 4px;
+ font-size: 14px;
+ }
+
+ /* Footer */
+ footer {
+ border-top: 1px solid var(--border);
+ padding: 40px 48px;
+ text-align: center;
+ font-size: 14px;
+ color: var(--text-3);
+ }
+
+ /* Responsive */
+ @media (max-width: 700px) {
+ nav, .hero, .toc-wrapper, .content { padding-left: 20px; padding-right: 20px; }
+ .hero h1 { font-size: 36px; }
+ .toc ol { grid-template-columns: 1fr; }
+ .hero-meta { flex-direction: column; gap: 8px; }
+ }
+ </style>
+</head>
+<body>
+
+<!-- Reading progress bar -->
+<div id="progress-bar"></div>
+
+<!-- Navigation -->
+<nav>
+ <div class="nav-inner">
+ <a class="nav-logo" href="#"> <span>py</span>ttsx3</a>
+ <ul class="nav-links">
+ <li><a href="#s1">Install</a></li>
+ <li><a href="#s2">Basics</a></li>
+ <li><a href="#s3">Voices</a></li>
+ <li><a href="#s4">Speed &amp; Volume</a></li>
+ <li><a href="#s5">Events</a></li>
+ <li><a href="#s6">Save to File</a></li>
+ <li><a href="#s7">Project</a></li>
+ </ul>
+ </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+ <div class="hero-badge"> Python · Text-to-Speech</div>
+ <h1>Teach your Python code<br>to <em>speak</em>.</h1>
+ <p>A step-by-step guide to <strong>pyttsx3</strong> — the offline, cross-platform text-to-speech library for Python. No API keys, no internet required.</p>
+ <div class="hero-meta">
+ <span> 7 Lessons</span>
+ <span> ~20 min read</span>
+ <span> Python 3.8+</span>
+ <span> pyttsx3</span>
+ </div>
+</section>
+
+<!-- Table of Contents -->
+<div class="toc-wrapper">
+ <div class="toc">
+ <h3>Contents</h3>
+ <ol>
+ <li><a href="#s1">Installation</a></li>
+ <li><a href="#s2">Say Your First Words</a></li>
+ <li><a href="#s3">Change the Voice</a></li>
+ <li><a href="#s4">Speed &amp; Volume</a></li>
+ <li><a href="#s5">Events &amp; Callbacks</a></li>
+ <li><a href="#s6">Save Speech to a File</a></li>
+ <li><a href="#s7">Mini Project — Jarvis Greeter</a></li>
+ </ol>
+ </div>
+</div>
+
+<!-- Content -->
+<main class="content">
+
+ <!-- Step 1 -->
+ <article class="step" id="s1">
+ <div class="step-header">
+ <div class="step-number">1</div>
+ <div class="step-title-wrap">
+ <h2>Installation</h2>
+ <span class="step-sub">Get pyttsx3 and its dependencies up and running</span>
+ </div>
+ </div>
+ <div class="prose">
+ <p><strong>pyttsx3</strong> works offline. It talks to the native TTS engine on each OS — no API keys, no internet, no cost.</p>
+ <ul>
+ <li><strong>macOS</strong> → uses <code>nsss</code> (NSSpeechSynthesizer)</li>
+ <li><strong>Windows</strong> → uses <code>sapi5</code> (Microsoft Speech API)</li>
+ <li><strong>Linux</strong> → uses <code>espeak</code> (needs to be installed separately)</li>
+ </ul>
+
+ <div class="callout callout-info">
+ <div class="callout-icon"></div>
+ <div class="callout-body">
+ <strong>Tip</strong>
+ Always install inside a virtual environment. Run <code>python -m venv .venv && source .venv/bin/activate</code> first.
+ </div>
+ </div>
+ </div>
+
+ <div class="code-block">
+ <div class="code-header">
+ <div class="dots"><div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div></div>
+ <span class="code-label">Terminal</span>
+ <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ </div>
+ <pre><code><span class="cm"># Install pyttsx3</span>
+pip install pyttsx3
+
+<span class="cm"># macOS — no extra deps needed</span>
+<span class="cm"># Windows — no extra deps needed</span>
+<span class="cm"># Linux — install espeak first:</span>
+sudo apt-get install espeak</code></pre>
+ </div>
+
+ <div class="callout callout-warn">
+ <div class="callout-icon"></div>
+ <div class="callout-body">
+ <strong>macOS Monterey/Ventura/Sonoma</strong>
+ If you get a "No module named 'objc'" error, run: <code>pip install pyobjc</code>
+ </div>
+ </div>
+ </article>
+
+ <hr class="divider" />
+
+ <!-- Step 2 -->
+ <article class="step" id="s2">
+ <div class="step-header">
+ <div class="step-number">2</div>
+ <div class="step-title-wrap">
+ <h2>Say Your First Words</h2>
+ <span class="step-sub">The three key methods: init → say → runAndWait</span>
+ </div>
+ </div>
+ <div class="prose">
+ <p>Every pyttsx3 program follows the same three-line pattern:</p>
+ <ul>
+ <li><code>pyttsx3.init()</code> — create the engine (connects to the OS TTS driver)</li>
+ <li><code>engine.say(text)</code> — queue the text to be spoken</li>
+ <li><code>engine.runAndWait()</code> — speak the queue and block until done</li>
+ </ul>
+ </div>
+
+ <div class="code-block">
+ <div class="code-header">
+ <div class="dots"><div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div></div>
+ <span class="code-label">hello_speak.py</span>
+ <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ </div>
+ <pre><code><span class="kw">import</span> pyttsx3
+
+<span class="cm"># 1. Create the TTS engine</span>
+engine = pyttsx3.<span class="fn">init</span>()
+
+<span class="cm"># 2. Queue text to speak</span>
+engine.<span class="fn">say</span>(<span class="st">"Hello! I am your Python assistant."</span>)
+engine.<span class="fn">say</span>(<span class="st">"pyttsx3 works completely offline."</span>)
+
+<span class="cm"># 3. Speak the queue (blocks until done)</span>
+engine.<span class="fn">runAndWait</span>()</code></pre>
+ </div>
+
+ <div class="callout callout-tip">
+ <div class="callout-icon"></div>
+ <div class="callout-body">
+ <strong>What happens</strong>
+ You can call <code>engine.say()</code> multiple times — they are queued and spoken in order when you call <code>runAndWait()</code>.
+ </div>
+ </div>
+ </article>
+
+ <hr class="divider" />
+
+ <!-- Step 3 -->
+ <article class="step" id="s3">
+ <div class="step-header">
+ <div class="step-number">3</div>
+ <div class="step-title-wrap">
+ <h2>Change the Voice</h2>
+ <span class="step-sub">List available voices and switch between them</span>
+ </div>
+ </div>
+ <div class="prose">
+ <p>Your OS ships with multiple voice profiles. pyttsx3 lets you list them and pick one by index or by ID string.</p>
+ </div>
+
+ <div class="code-block">
+ <div class="code-header">
+ <div class="dots"><div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div></div>
+ <span class="code-label">voices.py</span>
+ <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ </div>
+ <pre><code><span class="kw">import</span> pyttsx3
+
+engine = pyttsx3.<span class="fn">init</span>()
+
+<span class="cm"># List all voices </span>
+voices = engine.<span class="fn">getProperty</span>(<span class="st">'voices'</span>)
+
+<span class="kw">for</span> i, voice <span class="kw">in</span> <span class="fn">enumerate</span>(voices):
+ <span class="fn">print</span>(<span class="st">f"[{i}] {voice.name} → {voice.id}"</span>)
+
+<span class="cm"># Set voice by index </span>
+<span class="cm"># index 0 → usually the first installed voice (e.g. "Alex" on Mac)</span>
+engine.<span class="fn">setProperty</span>(<span class="st">'voice'</span>, voices[<span class="nm">0</span>].id)
+engine.<span class="fn">say</span>(<span class="st">"This is voice number zero."</span>)
+
+<span class="cm"># Try index 1 if available</span>
+<span class="kw">if</span> <span class="fn">len</span>(voices) > <span class="nm">1</span>:
+ engine.<span class="fn">setProperty</span>(<span class="st">'voice'</span>, voices[<span class="nm">1</span>].id)
+ engine.<span class="fn">say</span>(<span class="st">"And this is voice number one."</span>)
+
+engine.<span class="fn">runAndWait</span>()</code></pre>
+ </div>
+
+ <table class="param-table">
+ <thead><tr><th>Voice Property</th><th>What it gives you</th></tr></thead>
+ <tbody>
+ <tr><td><code>voice.id</code></td><td>Unique identifier string — pass this to <code>setProperty</code></td></tr>
+ <tr><td><code>voice.name</code></td><td>Human-readable name (e.g. "Samantha", "Alex", "Daniel")</td></tr>
+ <tr><td><code>voice.languages</code></td><td>List of language codes (e.g. <code>['en_US']</code>)</td></tr>
+ <tr><td><code>voice.gender</code></td><td><code>'VoiceGenderMale'</code> / <code>'VoiceGenderFemale'</code></td></tr>
+ </tbody>
+ </table>
+ </article>
+
+ <hr class="divider" />
+
+ <!-- Step 4 -->
+ <article class="step" id="s4">
+ <div class="step-header">
+ <div class="step-number">4</div>
+ <div class="step-title-wrap">
+ <h2>Speed &amp; Volume</h2>
+ <span class="step-sub">Fine-tune how fast and how loud your assistant speaks</span>
+ </div>
+ </div>
+ <div class="prose">
+ <p>Use <code>getProperty</code> to read the current value and <code>setProperty</code> to change it.</p>
+ </div>
+
+ <div class="code-block">
+ <div class="code-header">
+ <div class="dots"><div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div></div>
+ <span class="code-label">speed_volume.py</span>
+ <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ </div>
+ <pre><code><span class="kw">import</span> pyttsx3
+
+engine = pyttsx3.<span class="fn">init</span>()
+
+<span class="cm"># Rate (speed) </span>
+<span class="cm"># Default: 200 words per minute</span>
+rate = engine.<span class="fn">getProperty</span>(<span class="st">'rate'</span>)
+<span class="fn">print</span>(<span class="st">f"Default rate: {rate}"</span>) <span class="cm"># → 200</span>
+
+engine.<span class="fn">setProperty</span>(<span class="st">'rate'</span>, <span class="nm">150</span>) <span class="cm"># slower — easier to understand</span>
+engine.<span class="fn">say</span>(<span class="st">"This is slower speech at 150 words per minute."</span>)
+
+engine.<span class="fn">setProperty</span>(<span class="st">'rate'</span>, <span class="nm">250</span>) <span class="cm"># faster</span>
+engine.<span class="fn">say</span>(<span class="st">"This is faster speech at 250 words per minute."</span>)
+
+<span class="cm"># Volume </span>
+<span class="cm"># Range: 0.0 (silent) → 1.0 (max)</span>
+volume = engine.<span class="fn">getProperty</span>(<span class="st">'volume'</span>)
+<span class="fn">print</span>(<span class="st">f"Default volume: {volume}"</span>) <span class="cm"># → 1.0</span>
+
+engine.<span class="fn">setProperty</span>(<span class="st">'volume'</span>, <span class="nm">0.8</span>)
+engine.<span class="fn">say</span>(<span class="st">"Volume is now at 80 percent."</span>)
+
+engine.<span class="fn">runAndWait</span>()</code></pre>
+ </div>
+
+ <table class="param-table">
+ <thead><tr><th>Property</th><th>Default</th><th>Range</th><th>Unit</th></tr></thead>
+ <tbody>
+ <tr><td><code>'rate'</code></td><td><code>200</code></td><td>50 – 400+</td><td>Words per minute</td></tr>
+ <tr><td><code>'volume'</code></td><td><code>1.0</code></td><td>0.0 – 1.0</td><td>Float (0 = silent)</td></tr>
+ </tbody>
+ </table>
+
+ <div class="callout callout-tip">
+ <div class="callout-icon"></div>
+ <div class="callout-body">
+ <strong>Sweet Spot</strong>
+ For a Jarvis-style assistant, <code>rate=160</code> and <code>volume=0.9</code> sounds very natural and authoritative.
+ </div>
+ </div>
+ </article>
+
+ <hr class="divider" />
+
+ <!-- Step 5 -->
+ <article class="step" id="s5">
+ <div class="step-header">
+ <div class="step-number">5</div>
+ <div class="step-title-wrap">
+ <h2>Events &amp; Callbacks</h2>
+ <span class="step-sub">Hook into speech events to run code during or after speaking</span>
+ </div>
+ </div>
+ <div class="prose">
+ <p>pyttsx3 fires events as speech progresses. You can attach Python functions to these events using <code>engine.connect()</code>.</p>
+ </div>
+
+ <div class="code-block">
+ <div class="code-header">
+ <div class="dots"><div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div></div>
+ <span class="code-label">events.py</span>
+ <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ </div>
+ <pre><code><span class="kw">import</span> pyttsx3
+
+engine = pyttsx3.<span class="fn">init</span>()
+
+<span class="cm"># Callback: called when an utterance starts </span>
+<span class="kw">def</span> <span class="fn">on_start</span>(name):
+ <span class="fn">print</span>(<span class="st">f" Started speaking: '{name}'"</span>)
+
+<span class="cm"># Callback: called when a word is spoken </span>
+<span class="kw">def</span> <span class="fn">on_word</span>(name, location, length):
+ <span class="fn">print</span>(<span class="st">f" Word at position {location}, length {length}"</span>)
+
+<span class="cm"># Callback: called when speech finishes </span>
+<span class="kw">def</span> <span class="fn">on_end</span>(name, completed):
+ <span class="fn">print</span>(<span class="st">f" Finished: '{name}' — completed={completed}"</span>)
+
+<span class="cm"># Connect callbacks to events</span>
+engine.<span class="fn">connect</span>(<span class="st">'started-utterance'</span>, on_start)
+engine.<span class="fn">connect</span>(<span class="st">'started-word'</span>, on_word)
+engine.<span class="fn">connect</span>(<span class="st">'finished-utterance'</span>, on_end)
+
+engine.<span class="fn">say</span>(<span class="st">"Hello from pyttsx3 events!"</span>, <span class="st">"greeting"</span>)
+engine.<span class="fn">runAndWait</span>()</code></pre>
+ </div>
+
+ <table class="param-table">
+ <thead><tr><th>Event Name</th><th>When it fires</th><th>Callback signature</th></tr></thead>
+ <tbody>
+ <tr><td><code>'started-utterance'</code></td><td>Speech begins for a queued item</td><td><code>f(name)</code></td></tr>
+ <tr><td><code>'started-word'</code></td><td>Each word as it is spoken</td><td><code>f(name, location, length)</code></td></tr>
+ <tr><td><code>'finished-utterance'</code></td><td>One queued item finishes</td><td><code>f(name, completed)</code></td></tr>
+ <tr><td><code>'error'</code></td><td>A speech error occurred</td><td><code>f(name, exception)</code></td></tr>
+ </tbody>
+ </table>
+ </article>
+
+ <hr class="divider" />
+
+ <!-- Step 6 -->
+ <article class="step" id="s6">
+ <div class="step-header">
+ <div class="step-number">6</div>
+ <div class="step-title-wrap">
+ <h2>Save Speech to a File</h2>
+ <span class="step-sub">Export spoken audio as an .aiff or .mp3 without playing it</span>
+ </div>
+ </div>
+ <div class="prose">
+ <p>Instead of playing audio live, you can save it to a file using <code>engine.save_to_file()</code>. This is useful for pre-generating audio responses.</p>
+ <ul>
+ <li>On <strong>macOS</strong> the default format is <code>.aiff</code></li>
+ <li>On <strong>Windows</strong> the default is <code>.wav</code></li>
+ <li>Convert with <code>pydub</code> if you need <code>.mp3</code></li>
+ </ul>
+ </div>
+
+ <div class="code-block">
+ <div class="code-header">
+ <div class="dots"><div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div></div>
+ <span class="code-label">save_audio.py</span>
+ <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ </div>
+ <pre><code><span class="kw">import</span> pyttsx3
+
+engine = pyttsx3.<span class="fn">init</span>()
+
+engine.<span class="fn">setProperty</span>(<span class="st">'rate'</span>, <span class="nm">160</span>)
+engine.<span class="fn">setProperty</span>(<span class="st">'volume'</span>, <span class="nm">1.0</span>)
+
+text = <span class="st">"Hello Boss. I am online and listening."</span>
+
+<span class="cm"># Save to file — does NOT play audio</span>
+engine.<span class="fn">save_to_file</span>(text, <span class="st">"greeting.aiff"</span>)
+engine.<span class="fn">runAndWait</span>()
+
+<span class="fn">print</span>(<span class="st">" Saved to greeting.aiff"</span>)</code></pre>
+ </div>
+
+ <div class="callout callout-purple">
+ <div class="callout-icon"></div>
+ <div class="callout-body">
+ <strong>Convert to MP3</strong>
+ Install <code>pip install pydub</code> and <code>ffmpeg</code>, then:<br>
+ <code>AudioSegment.from_file("greeting.aiff").export("greeting.mp3", format="mp3")</code>
+ </div>
+ </div>
+ </article>
+
+ <hr class="divider" />
+
+ <!-- Step 7 -->
+ <article class="step" id="s7">
+ <div class="step-header">
+ <div class="step-number">7</div>
+ <div class="step-title-wrap">
+ <h2>Mini Project — Jarvis Greeter</h2>
+ <span class="step-sub">Put it all together into a reusable speaker class</span>
+ </div>
+ </div>
+ <div class="prose">
+ <p>Here's a clean, production-ready <code>Speaker</code> class that wraps pyttsx3 — the same pattern used in your Jarvis bot's <code>voice.py</code>.</p>
+ </div>
+
+ <div class="code-block">
+ <div class="code-header">
+ <div class="dots"><div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div></div>
+ <span class="code-label">jarvis_speaker.py</span>
+ <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+ </div>
+ <pre><code><span class="kw">import</span> pyttsx3
+<span class="kw">import</span> datetime
+
+
+<span class="kw">class</span> <span class="cl">Speaker</span>:
+ <span class="st">"""A clean wrapper around pyttsx3 for a voice assistant."""</span>
+
+ <span class="kw">def</span> <span class="fn">__init__</span>(self, rate=<span class="nm">160</span>, volume=<span class="nm">0.9</span>, voice_index=<span class="nm">0</span>):
+ self.engine = pyttsx3.<span class="fn">init</span>()
+ self.engine.<span class="fn">setProperty</span>(<span class="st">'rate'</span>, rate)
+ self.engine.<span class="fn">setProperty</span>(<span class="st">'volume'</span>, volume)
+
+ <span class="cm"># Pick a voice by index</span>
+ voices = self.engine.<span class="fn">getProperty</span>(<span class="st">'voices'</span>)
+ <span class="kw">if</span> voice_index < <span class="fn">len</span>(voices):
+ self.engine.<span class="fn">setProperty</span>(<span class="st">'voice'</span>, voices[voice_index].id)
+
+ <span class="kw">def</span> <span class="fn">speak</span>(self, text: <span class="fn">str</span>):
+ <span class="st">"""Speak the given text aloud."""</span>
+ <span class="fn">print</span>(<span class="st">f" {text}"</span>)
+ self.engine.<span class="fn">say</span>(text)
+ self.engine.<span class="fn">runAndWait</span>()
+
+ <span class="kw">def</span> <span class="fn">greet</span>(self):
+ <span class="st">"""Say a time-aware greeting."""</span>
+ hour = datetime.datetime.<span class="fn">now</span>().hour
+ <span class="kw">if</span> hour < <span class="nm">12</span>:
+ greeting = <span class="st">"Good morning, Boss."</span>
+ <span class="kw">elif</span> hour < <span class="nm">17</span>:
+ greeting = <span class="st">"Good afternoon, Boss."</span>
+ <span class="kw">else</span>:
+ greeting = <span class="st">"Good evening, Boss."</span>
+
+ self.<span class="fn">speak</span>(greeting + <span class="st">" I am online and ready."</span>)
+
+ <span class="kw">def</span> <span class="fn">save</span>(self, text: <span class="fn">str</span>, filename: <span class="fn">str</span>):
+ <span class="st">"""Save speech to an audio file without playing it."""</span>
+ self.engine.<span class="fn">save_to_file</span>(text, filename)
+ self.engine.<span class="fn">runAndWait</span>()
+ <span class="fn">print</span>(<span class="st">f" Saved → {filename}"</span>)
+
+
+<span class="cm"># Run it </span>
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+ jarvis = <span class="cl">Speaker</span>(rate=<span class="nm">160</span>, volume=<span class="nm">0.9</span>)
+ jarvis.<span class="fn">greet</span>()
+ jarvis.<span class="fn">speak</span>(<span class="st">"pyttsx3 is now your voice engine. All systems go."</span>)
+ jarvis.<span class="fn">save</span>(<span class="st">"Saved this response."</span>, <span class="st">"response.aiff"</span>)</code></pre>
+ </div>
+
+ <div class="callout callout-tip">
+ <div class="callout-icon"></div>
+ <div class="callout-body">
+ <strong>You're Done!</strong>
+ This <code>Speaker</code> class handles voice selection, rate, volume, greeting logic, and file saving — everything you need for your Jarvis bot.
+ </div>
+ </div>
+
+ <div class="callout callout-info">
+ <div class="callout-icon"></div>
+ <div class="callout-body">
+ <strong>Next Steps</strong>
+ Combine this with <code>SpeechRecognition</code> (already in your <code>voice.py</code>) and your Groq MCP tools to build a fully voice-driven AI agent.
+ </div>
+ </div>
+
+ </article>
+
+</main>
+
+<!-- Footer -->
+<footer>
+ <p>Built for the Jarvis Bot project · pyttsx3 v2.9+ · Python 3.8+</p>
+</footer>
+
+<script>
+ // Reading progress bar 
+ const bar = document.getElementById('progress-bar');
+ window.addEventListener('scroll', () => {
+ const scrolled = window.scrollY;
+ const maxScroll = document.body.scrollHeight - window.innerHeight;
+ const pct = maxScroll > 0 ? (scrolled / maxScroll) * 100 : 0;
+ bar.style.width = pct + '%';
+ });
+
+ // Copy button 
+ function copyCode(btn) {
+ const pre = btn.closest('.code-block').querySelector('pre');
+ const text = pre.innerText;
+ navigator.clipboard.writeText(text).then(() => {
+ btn.textContent = ' Copied';
+ btn.classList.add('copied');
+ setTimeout(() => {
+ btn.textContent = 'Copy';
+ btn.classList.remove('copied');
+ }, 2000);
+ });
+ }
+</script>
+
+</body>
+</html>
+
